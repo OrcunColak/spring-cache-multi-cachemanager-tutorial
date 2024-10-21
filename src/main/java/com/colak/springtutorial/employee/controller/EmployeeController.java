@@ -11,6 +11,7 @@ import org.springframework.cache.annotation.CacheConfig;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,11 +36,25 @@ public class EmployeeController {
 
     private final EmployeeService employeeService;
 
+    // If we use @Cacheable a new post saving the same Employee will not work
     @PostMapping("/save")
     @Cacheable(key = "#employeeDTO.id", cacheManager = "redisCacheManager")
     public EmployeeDTO save(@RequestBody EmployeeDTO employeeDTO) {
         log.info("save is called with : {}", employeeDTO);
 
+        // saving employee into db
+        Employee employee = EmployeeMapper.INSTANCE.dtoToEmployee(employeeDTO);
+
+        employeeService.save(employee);
+
+        return EmployeeMapper.INSTANCE.employeeToDto(employee);
+    }
+
+    // To save an employee and update the cache
+    @PostMapping("/saveOrUpdate")
+    @Caching(evict = {@CacheEvict(key = "#employeeDTO.id")},
+            put = {@CachePut(key = "#employeeDTO.id")})
+    public EmployeeDTO saveOrUpdate(EmployeeDTO employeeDTO) {
         // saving employee into db
         Employee employee = EmployeeMapper.INSTANCE.dtoToEmployee(employeeDTO);
 
